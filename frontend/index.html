@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>银行 AI 智能体</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+</head>
+<body>
+  <!-- 登录 / 注册 -->
+  <div id="auth" class="auth">
+    <div class="auth-box">
+      <h1 class="brand">银行 AI 智能体</h1>
+      <p class="muted">登录或注册后，可以直接对话让 AI 帮你办理业务</p>
+      <div class="tabs">
+        <button id="tab-login" class="tab active" onclick="switchAuth('login')">登录</button>
+        <button id="tab-register" class="tab" onclick="switchAuth('register')">注册</button>
+      </div>
+      <form id="auth-form" onsubmit="submitAuth(event)">
+        <label class="field reg-only">姓名<input id="f-name" maxlength="20" placeholder="真实姓名" /></label>
+        <label class="field">用户名<input id="f-user" maxlength="20" autocomplete="username" placeholder="3-20 位字母、数字或下划线" /></label>
+        <label class="field reg-only">手机号(选填)<input id="f-phone" maxlength="20" placeholder="手机号" /></label>
+        <label class="field">密码<input id="f-pass" type="password" autocomplete="current-password" placeholder="至少 6 位" /></label>
+        <div id="auth-error" class="error" role="alert"></div>
+        <button id="auth-submit" class="btn primary" type="submit">登录</button>
+      </form>
+      <p class="muted small">演示账号: user1 / 123456</p>
+    </div>
+  </div>
+
+  <!-- 主应用 -->
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <div class="brand small-brand">银行 AI 智能体</div>
+      <nav class="nav">
+        <button data-page="dashboard" class="nav-btn active">首页</button>
+        <button data-page="transfer" class="nav-btn">智能转账</button>
+        <button data-page="bill" class="nav-btn">账单分析</button>
+        <button data-page="wealth" class="nav-btn">理财操作</button>
+        <button data-page="audit" class="nav-btn">审计日志</button>
+      </nav>
+      <div class="user"><span id="user-name"></span><button class="btn ghost" onclick="logout()">退出</button></div>
+    </header>
+    <div class="layout">
+      <main class="content">
+        <section id="page-dashboard" class="page active">
+          <h2>账户概览</h2>
+          <div class="grid4">
+            <div class="stat"><span>账户余额</span><b id="d-balance">-</b></div>
+            <div class="stat"><span>本月支出</span><b id="d-expense">-</b></div>
+            <div class="stat"><span>本月收入</span><b id="d-income">-</b></div>
+            <div class="stat"><span>储蓄率</span><b id="d-rate">-</b></div>
+          </div>
+          <div class="card">
+            <h3>理财持仓 <small id="d-portfolio" class="muted"></small></h3>
+            <div class="row">
+              <button class="btn" data-go="transfer">智能转账</button>
+              <button class="btn" data-go="bill">账单分析</button>
+              <button class="btn" data-go="wealth">理财操作</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>为您推荐</h3>
+            <div id="d-recs" class="recs"></div>
+          </div>
+        </section>
+
+        <section id="page-transfer" class="page">
+          <h2>智能转账</h2>
+          <div class="card two">
+            <div>
+              <label class="field">收款人<input id="t-to" placeholder="姓名或手机号" /></label>
+              <label class="field">金额(元)<input id="t-amount" type="number" min="0" step="0.01" placeholder="0.00" /></label>
+              <label class="field">备注<input id="t-memo" maxlength="50" placeholder="选填" /></label>
+              <div id="t-risk" class="risk-hint">单笔不超过 1000 元需确认；超过需验证码</div>
+              <button id="t-submit" class="btn primary">提交转账</button>
+            </div>
+            <div>
+              <h3>常用收款人</h3>
+              <div id="t-contacts" class="chips"></div>
+              <h3>权限说明</h3>
+              <ul class="muted">
+                <li><span class="dot green"></span>查询：自动执行</li>
+                <li><span class="dot yellow"></span>1000 元以内转账：需确认</li>
+                <li><span class="dot red"></span>大额转账/申购：需验证码</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-bill" class="page">
+          <h2>账单分析</h2>
+          <div class="grid4">
+            <div class="stat"><span>本月支出</span><b id="b-expense">-</b></div>
+            <div class="stat"><span>本月收入</span><b id="b-income">-</b></div>
+            <div class="stat"><span>储蓄率</span><b id="b-rate">-</b></div>
+            <div class="stat"><span>最高类别</span><b id="b-top">-</b></div>
+          </div>
+          <div class="card two">
+            <div class="chart-wrap"><canvas id="bill-chart" aria-label="消费分类占比图"></canvas></div>
+            <div>
+              <h3>分析洞察</h3>
+              <ul id="b-insights" class="muted"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-wealth" class="page">
+          <h2>理财操作</h2>
+          <div class="card">
+            <h3>专业理财分析
+              <small class="muted">按「财产盘点 → 安全评估 → 收益考量 → 横向对比 → 买哪只」五步路径</small>
+              <span class="risk-select">
+                <label for="w-risk">投资者等级</label>
+                <select id="w-risk">
+                  <option value="conservative">C1 谨慎型</option>
+                  <option value="moderate">C2 稳健型</option>
+                  <option value="balanced" selected>C3 平衡型</option>
+                  <option value="aggressive">C4 进取型</option>
+                  <option value="very_aggressive">C5 激进型</option>
+                </select>
+              </span>
+            </h3>
+            <div id="w-analysis" class="muted">加载中…</div>
+          </div>
+          <div class="card">
+            <h3>我的持仓 <small id="w-total" class="muted"></small></h3>
+            <table class="table"><thead><tr><th>产品</th><th>本金</th><th>现值</th><th>盈亏</th><th></th></tr></thead>
+              <tbody id="w-holdings"></tbody></table>
+          </div>
+          <div class="card">
+            <h3>理财产品 <small class="muted">含业绩比较基准 · 费后收益 · 夏普/回撤</small></h3>
+            <div id="w-products" class="recs"></div>
+          </div>
+        </section>
+
+        <section id="page-audit" class="page">
+          <h2>审计日志</h2>
+          <div class="card">
+            <table class="table"><thead><tr><th>时间</th><th>操作</th><th>工具</th><th>风险</th><th>验证</th><th>结果</th></tr></thead>
+              <tbody id="a-rows"></tbody></table>
+          </div>
+        </section>
+      </main>
+      <aside id="chat" class="chat">
+        <div class="chat-head">AI 助手 <small class="muted">DeepSeek</small></div>
+        <div id="chat-log" class="chat-log" aria-live="polite"></div>
+        <div class="quick" id="chat-quick">
+          <button>看下我的账单</button>
+          <button>给妈妈转 200 元</button>
+          <button>推荐一款稳健理财</button>
+        </div>
+        <form id="chat-form" class="chat-form">
+          <input id="chat-input" maxlength="500" autocomplete="off" placeholder="例如：帮我转 500 给房东" />
+          <button class="btn primary" type="submit">发送</button>
+        </form>
+      </aside>
+    </div>
+  </div>
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <div class="modal-box">
+      <h3 id="m-title"></h3>
+      <p id="m-body"></p>
+      <div id="m-mfa" class="hidden">
+        <label class="field">验证码<input id="m-code" inputmode="numeric" maxlength="8" autocomplete="one-time-code" /></label>
+      </div>
+      <div id="m-error" class="error" role="alert"></div>
+      <div class="row end">
+        <button id="m-cancel" class="btn ghost">取消</button>
+        <button id="m-ok" class="btn primary">确认执行</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
