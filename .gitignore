@@ -1,0 +1,9 @@
+# 密钥与本地环境
+backend/.env
+backend/data/
+.venv39/
+.venv/
+
+# Python 缓存
+__pycache__/
+*.pyc
